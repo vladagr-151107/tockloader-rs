@@ -78,3 +78,27 @@ impl KnownBoard for Nrf52840dk {
         }
     }
 }
+
+pub struct NucleoU545ReQ;
+
+impl KnownBoard for NucleoU545ReQ {
+    fn serial_target_info(&self) -> SerialTargetInfo {
+        SerialTargetInfo::default()
+    }
+
+    fn probe_target_info(&self) -> ProbeTargetInfo {
+        ProbeTargetInfo {
+            chip: "STM32U545RETxQ".to_string(),
+            core: 0,
+        }
+    }
+
+    fn get_settings(&self) -> BoardSettings {
+        BoardSettings {
+            arch: Some("cortex-m4".to_string()),
+            start_address: 0x08000000,
+            page_size: 8192,
+            ram_start_address: 0x20000000,
+        }
+    }
+}
