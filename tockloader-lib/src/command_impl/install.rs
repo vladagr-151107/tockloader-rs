@@ -1,21 +1,32 @@
 use async_trait::async_trait;
 
 use crate::attributes::app_attributes::AppAttributes;
-use crate::command_impl::reshuffle_apps::{create_pkt, reshuffle_apps, TockApp};
+use crate::command_impl::reshuffle_apps::{create_pkt, reshuffle_apps, find_conflicting_app, TockApp};
 use crate::connection::{Connection, TockloaderConnection};
 use crate::errors::{InternalError, TockloaderError};
 use crate::tabs::tab::Tab;
 use crate::{CommandInstall, CommandList, IO};
 
+pub enum InstallResolution {
+    Overwrite, 
+    InstallAsNew,
+}
 #[async_trait]
 impl CommandInstall for TockloaderConnection {
-    async fn install_app(&mut self, tab: Tab) -> Result<(), TockloaderError> {
+    async fn install_app(&mut self, tab: Tab, resolution: InstallResolution) -> Result<(), TockloaderError> {
         let settings = self.get_settings();
         let app_attributes_list: Vec<AppAttributes> = self.list().await?;
-        let mut tock_app_list = app_attributes_list
+        let names: Vec<Option<&str>> = app_attributes_list
             .iter()
-            .map(TockApp::from_app_attributes)
-            .collect::<Vec<TockApp>>();
+            .map(|a| a.tbf_header.get_package_name())
+            .collect();
+        let conflict_idx = find_conflicting_app(&names, tab.name());
+        let mut tock_app_list: Vec<TockApp> = app_attributes_list
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| !(matches!(resolution, InstallResolution::Overwrite) && Some(*i) == conflict_idx))
+            .map(|(_, a)| TockApp::from_app_attributes(a))
+            .collect();
         log::info!("tock apps len {:?}", tock_app_list.len());
 
         // obtain the binaries in a vector
@@ -47,5 +58,12 @@ impl CommandInstall for TockloaderConnection {
         // write the pkt
         let _ = self.write(settings.app_start_address, &pkt).await;
         Ok(())
+    }
+
+    async fn find_conflicting_app(&mut self, tab: &Tab) -> Result<Option<String>, TockloaderError> {
+        let app_attributes_list = self.list().await?;
+        Ok(app_attributes_list.iter()
+            .find(|a| a.tbf_header.get_package_name() == Some(tab.name()))
+            .map(|_| tab.name().to_string()))
     }
 }

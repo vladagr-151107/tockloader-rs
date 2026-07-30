@@ -763,10 +763,45 @@ mod tests {
         ]);
         assert_eq!(reshuffled_apps, correct_config);
     }
+
     #[test]
     fn detects_conflict_by_name() {
       let names = vec![Some("blink"), Some("sensor_app")];
       assert_eq!(find_conflicting_app(&names, "sensor_app"), Some(1));
       assert_eq!(find_conflicting_app(&names, "new_app"), None);
+    }
+    
+    #[test]
+    fn overwrite_drops_conflicting_app_before_reshuffle() {
+      // Two installed apps already on the board.
+      let old_app = TockApp::Flexible(FlexibleApp {
+        installed: true,
+        idx: Some(0),
+        size: 0x2000,
+      });
+      let other_app = TockApp::Flexible(FlexibleApp {
+        installed: true,
+        idx: Some(1),
+        size: 0x1000,
+      });
+
+      let apps = vec![old_app, other_app];
+
+      let conflict_idx = Some(0);
+      let resolution_is_overwrite = true;
+
+      let filtered: Vec<TockApp> = apps
+        .into_iter()
+        .enumerate()
+        .filter(|(i, _)| !(resolution_is_overwrite && Some(*i) == conflict_idx))
+        .map(|(_, a)| a)
+        .collect();
+
+      // The conflicting app (index 0) should be gone; the other one stays.
+      assert_eq!(filtered.len(), 1);
+      match &filtered[0] {
+        TockApp::Flexible(f) => assert_eq!(f.idx, Some(1)),
+        _ => panic!("expected the remaining app to be the Flexible variant with idx 1"),
+      }
     }
 }

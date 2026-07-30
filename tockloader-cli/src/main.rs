@@ -11,6 +11,7 @@ use clap::ArgMatches;
 use cli::make_cli;
 use known_boards::KnownBoardNames;
 use tockloader_lib::board_settings::BoardSettings;
+use tockloader_lib::command_impl::install::InstallResolution;
 use tockloader_lib::connection::{
     Connection, ProbeRSConnection, ProbeTargetInfo, SerialConnection, SerialTargetInfo,
     TockloaderConnection,
@@ -236,7 +237,7 @@ async fn main() -> Result<()> {
 
             let mut conn = open_connection(sub_matches).await?;
 
-            conn.install_app(tab_file)
+            conn.install_app(tab_file, InstallResolution::Overwrite)
                 .await
                 .context("Failed to install app.")?;
         }
