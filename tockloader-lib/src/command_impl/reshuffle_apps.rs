@@ -472,6 +472,11 @@ fn align_down(address: u64) -> u64 {
     address - address % ALIGNMENT
 }
 
+/// This functions detects name conflict with an already installed app
+pub fn find_conflicting_app(installed_names: &[Option<&str>], new_name: &str) -> Option<usize>{
+    installed_names.iter().position(|n| *n == Some(new_name))
+}
+
 /// This function creates the full binary that will be written
 pub fn create_pkt(
     configuration: Vec<Index>,
@@ -757,5 +762,11 @@ mod tests {
             },
         ]);
         assert_eq!(reshuffled_apps, correct_config);
+    }
+    #[test]
+    fn detects_conflict_by_name() {
+      let names = vec![Some("blink"), Some("sensor_app")];
+      assert_eq!(find_conflicting_app(&names, "sensor_app"), Some(1));
+      assert_eq!(find_conflicting_app(&names, "new_app"), None);
     }
 }
