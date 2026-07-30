@@ -45,7 +45,7 @@ impl IOCommands for ProbeRSConnection {
         if !self.is_open() {
             return Err(InternalError::ConnectionNotOpen.into());
         }
-        let start_address = self.get_settings().start_address;
+        let start_address = self.get_settings().app_start_address;
         AppAttributes::read_apps_data(self, start_address).await
     }
 
@@ -53,7 +53,10 @@ impl IOCommands for ProbeRSConnection {
         if !self.is_open() {
             return Err(InternalError::ConnectionNotOpen.into());
         }
-        let system_attributes = SystemAttributes::read_system_attributes(self).await?;
+        let flash_address = self.get_settings().flash_start_address;
+        let start_address = self.get_settings().app_start_address;
+        let system_attributes =
+            SystemAttributes::read_system_attributes(self, flash_address, start_address).await?;
         Ok(system_attributes)
     }
 }

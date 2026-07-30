@@ -8,8 +8,8 @@ use crate::{CommandInfo, IOCommands};
 #[async_trait]
 impl CommandInfo for TockloaderConnection {
     async fn info(&mut self) -> Result<GeneralAttributes, TockloaderError> {
-        let installed_apps = self.read_installed_apps().await.unwrap();
-        let system_atributes = self.read_system_attributes().await.unwrap();
+        let installed_apps = self.read_installed_apps().await?;
+        let system_atributes = self.read_system_attributes().await?;
         Ok(GeneralAttributes::new(system_atributes, installed_apps))
     }
 }

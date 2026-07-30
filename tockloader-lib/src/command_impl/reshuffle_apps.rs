@@ -98,11 +98,11 @@ impl TockApp {
 
         if header.get_fixed_address_flash().is_some() {
             // addr = align_down(addr as u64) as u32;
-            // if addr < settings.start_address as u32 {
+            // if addr < settings.app_start_address as u32 {
             //     // this rust app should not be here
             //     panic!(
-            //         "This rust app starts at {addr:#x}, while the board's start_address is {:#x}",
-            //         settings.start_address
+            //         "This rust app starts at {addr:#x}, while the board's app_start_address is {:#x}",
+            //         settings.app_start_address
             //     )
             // }
             // turns out that fixed address is a loosely-used term, address has to be aligned down to a multiple of 1024 bytes
@@ -324,7 +324,7 @@ pub fn reshuffle_apps(
                 let insert_size = c_app.size;
 
                 if reordered_apps.is_empty() {
-                    reordered_apps.push(c_app.as_index(None, settings.start_address));
+                    reordered_apps.push(c_app.as_index(None, settings.app_start_address));
 
                     continue;
                 }
@@ -394,7 +394,7 @@ pub fn reshuffle_apps(
                             installed: false,
                             idx: None,
                             ram_address: None,
-                            address: settings.start_address + insert_size,
+                            address: settings.app_start_address + insert_size,
                             size: needed_padding,
                         });
                         reordered_apps.push(c_app.as_index(None, gap_start + needed_padding));
@@ -511,7 +511,8 @@ mod tests {
     fn install_new_c_app() {
         let settings: &BoardSettings = &BoardSettings {
             arch: Some("cortex-m4".to_string()),
-            start_address: 0x00040000,
+            flash_start_address: 0x00000000,
+            app_start_address: 0x00040000,
             page_size: 512,
             ram_start_address: 0x20000000,
         };
@@ -568,7 +569,8 @@ mod tests {
     fn install_new_rust_app() {
         let settings: &BoardSettings = &BoardSettings {
             arch: Some("cortex-m4".to_string()),
-            start_address: 0x00040000,
+            flash_start_address: 0x00000000,
+            app_start_address: 0x00040000,
             page_size: 512,
             ram_start_address: 0x20000000,
         };
@@ -604,7 +606,8 @@ mod tests {
     fn install_more_rust_apps() {
         let settings: &BoardSettings = &BoardSettings {
             arch: Some("cortex-m4".to_string()),
-            start_address: 0x00040000,
+            flash_start_address: 0x00000000,
+            app_start_address: 0x00040000,
             page_size: 512,
             ram_start_address: 0x20000000,
         };
@@ -678,7 +681,8 @@ mod tests {
     fn insert_c_app_between_rust_apps() {
         let settings: &BoardSettings = &BoardSettings {
             arch: Some("cortex-m4".to_string()),
-            start_address: 0x00040000,
+            flash_start_address: 0x00000000,
+            app_start_address: 0x00040000,
             page_size: 512,
             ram_start_address: 0x20000000,
         };

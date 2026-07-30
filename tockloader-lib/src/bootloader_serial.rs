@@ -156,7 +156,6 @@ async fn write_bytes(
     .map_err(|_| TockError::BootloaderTimeout)?
 }
 
-#[allow(dead_code)]
 pub async fn ping_bootloader_and_wait_for_response(
     port: &mut SerialStream,
 ) -> Result<(), TockloaderError> {

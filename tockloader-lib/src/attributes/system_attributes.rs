@@ -4,10 +4,9 @@
 
 use byteorder::{ByteOrder, LittleEndian};
 
+use super::decode::DecodedAttribute;
 use crate::errors::{AttributeParseError, TockError, TockloaderError};
 use crate::IO;
-
-use super::decode::{bytes_to_string, decode_attribute};
 
 /// This structure contains all relevant information about board that is stored
 /// in the bootloader ROM.
@@ -48,12 +47,29 @@ impl SystemAttributes {
         }
     }
 
-    /// Read system attributes using a generalized connection. A bootloader must be
-    /// present on this board for this function to work properly.
-    ///
+    /// Check if the bootloader is present on the version of Tock
+    pub(crate) async fn bootloader_is_present(
+        conn: &mut dyn IO,
+        flash_start_address: u64,
+    ) -> Result<bool, TockloaderError> {
+        // If a bootloader is present, the start of 0x400 will read
+        // "TOCKBOOTLOADER", which is exactly 14 bytes long, so we'll read
+        // 14 bytes starting from 0x400.
+        let flag = conn.read(flash_start_address + 0x400, 14).await?;
+        if flag == "TOCKBOOTLOADER".as_bytes() {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Read system and kernel attributes.
+    /// System attributes are read only if the board has
+    /// a bootloader present.
     /// # Parameters
-    /// - `conn` : Either a SerialConnection or a ProbeRSConnection
-    ///
+    /// - `conn` : Either a SerialConnection or a ProbeRSConnection.
+    /// - `flash_address` : The start of flash memory.
+    /// - `start_address` : The start of User Space Applications in flash memory.
     /// # Returns
     /// - Ok(result): if attributes were read successfully
     /// - Err(TockloaderError::MisconfiguredBoard): if no start address is found or valid
@@ -62,74 +78,62 @@ impl SystemAttributes {
     /// - Err(TockloaderError::SerialReadError): if reading fails on Serial
     pub(crate) async fn read_system_attributes(
         conn: &mut dyn IO,
+        flash_start_address: u64,
+        app_start_address: u64,
     ) -> Result<SystemAttributes, TockloaderError> {
         let mut result = SystemAttributes::new();
-        // System attributes start at 0x600 and up to 0x9FF. See:
+        // System attributes start at an offset of 0x600 and up to 0x9FF. See:
         // https://book.tockos.org/doc/memory_layout#flash-1
-        let address = 0x600;
+        //
+        let address = flash_start_address + 0x600;
 
         let buf = conn.read(address, 64 * 16).await?;
 
-        let mut data = buf.chunks(64);
+        let has_bootloader = Self::bootloader_is_present(conn, flash_start_address).await?;
 
-        for current_slot in 0..data.len() {
-            let slot_data = match data.next() {
-                Some(data) => data,
-                None => break,
-            };
-
-            // If the attribute chunk was successfully decoded, assign its value
-            // to the corresponding field in `result` based on the index:
-            // - 0 = board name,
-            // - 1 = architecture,
-            // - 2 = application start address (parsed from hex string),
-            // - 3 = boot hash, _ = invalid or missing data is skipped.
-            // NOTE: this can also be done by looping directly through the key attributes.
-            if let Some(decoded_attributes) = decode_attribute(slot_data) {
-                match current_slot {
-                    0 => {
-                        result.board = Some(decoded_attributes.value.to_string());
-                    }
-                    1 => {
-                        result.arch = Some(decoded_attributes.value.to_string());
-                    }
-                    2 => {
-                        // Parse hex string like "0x40000" into actual u64 value
-                        result.appaddr = Some(
-                            u64::from_str_radix(
-                                decoded_attributes
-                                    .value
-                                    .to_string()
-                                    .trim_start_matches("0x"),
-                                16,
-                            )
-                            .map_err(|e| {
-                                TockError::AttributeParsing(AttributeParseError::InvalidNumber(e))
-                            })?,
-                        );
-                    }
-                    3 => {
-                        result.boothash = Some(decoded_attributes.value.to_string());
-                    }
-                    _ => {}
-                }
-            } else {
-                continue;
+        if !has_bootloader {
+            // TODO(K-Nicolas-10): Chain: CLI arguments -> hardcoded start_address -> calculate from kernel app start address
+            result.appaddr = Some(app_start_address);
+        } else {
+            let mut attribute_chunks = buf.chunks_exact(DecodedAttribute::ENCODED_LEN);
+            // We always read 16 * 64 bytes so we won't panic
+            if let Some(board) = attribute_chunks.next().and_then(DecodedAttribute::decode) {
+                result.board = Some(board.value);
             }
+
+            if let Some(arch) = attribute_chunks.next().and_then(DecodedAttribute::decode) {
+                result.arch = Some(arch.value);
+            }
+
+            if let Some(appaddr) = attribute_chunks.next().and_then(DecodedAttribute::decode) {
+                result.appaddr = Some(
+                    u64::from_str_radix(appaddr.value.trim_start_matches("0x"), 16).map_err(
+                        |e| TockError::AttributeParsing(AttributeParseError::InvalidNumber(e)),
+                    )?,
+                );
+            }
+
+            if let Some(boothash) = attribute_chunks.next().and_then(DecodedAttribute::decode) {
+                result.boothash = Some(boothash.value);
+            }
+
+            // At this address lives the version of the bootloader we are using.
+            // Trying to read this when no bootloader is present will result in a panic.
+            // So we first verify if we have a bootloader, if not we just skip this and
+            // return None for the bootloader version.
+            let address = flash_start_address + 0x40E;
+
+            let buf = conn.read(address, 8).await?;
+
+            let string = String::from_utf8(buf.to_vec())
+                .map_err(|e| TockError::AttributeParsing(AttributeParseError::InvalidString(e)))?;
+
+            let string = string.trim_matches(char::from(0));
+
+            result.bootloader_version = Some(string.to_owned());
         }
 
         // TODO(eva-cosma): separate kernel attributes from kernel flags.
-
-        let address = 0x40E;
-
-        let buf = conn.read(address, 8).await?;
-
-        let string = String::from_utf8(buf.to_vec())
-            .map_err(|e| TockError::AttributeParsing(AttributeParseError::InvalidString(e)))?;
-
-        let string = string.trim_matches(char::from(0));
-
-        result.bootloader_version = Some(string.to_owned());
 
         // The 100 bytes prior to the application start address are reserved for the kernel attributes and flags
         let kernel_attr_addr = result
@@ -138,7 +142,13 @@ impl SystemAttributes {
             - 100;
         let kernel_attr_binary = conn.read(kernel_attr_addr, 100).await?;
 
-        let sentinel = bytes_to_string(&kernel_attr_binary[96..100]);
+        let sentinel = std::str::from_utf8(&kernel_attr_binary[96..100])
+            .map_err(|_| TockError::AttributeParsing(AttributeParseError::InvalidSentinel))?
+            .to_string();
+
+        if sentinel != "TOCK" {
+            return Err(TockError::AttributeParsing(AttributeParseError::InvalidSentinel).into());
+        }
         let kernel_version = LittleEndian::read_uint(&kernel_attr_binary[95..96], 1);
 
         let app_memory_len = LittleEndian::read_u32(&kernel_attr_binary[84..92]);

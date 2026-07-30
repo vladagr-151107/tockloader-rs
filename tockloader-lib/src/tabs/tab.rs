@@ -96,7 +96,7 @@ impl Tab {
             if flash != 0
                 && ram != 0
                 && arch.starts_with(settings.arch.as_ref().unwrap())
-                && flash >= settings.start_address
+                && flash >= settings.app_start_address
             {
                 log::info!("rust, pushed arch {arch}, flash {flash:#x}, ram {ram:#x}");
                 compatible_tbfs.push(Some((flash, ram)));

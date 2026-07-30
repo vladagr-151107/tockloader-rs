@@ -17,66 +17,49 @@ pub struct DecodedAttribute {
 }
 
 impl DecodedAttribute {
+    /// Total size of one encoded attribute is: 8 byte key + 1 byte value
+    /// length + up to 55 byte value
+    pub(crate) const ENCODED_LEN: usize = 64;
+    /// Maximum allowed length of an attribute's value field: 55 bytes remain
+    /// (bytes 9–63) after the 8-byte key and 1-byte length fields.
+    const ATTRIBUTE_LEN: u8 = 55;
     pub(crate) fn new(decoded_key: String, decoded_value: String) -> DecodedAttribute {
         DecodedAttribute {
             key: decoded_key,
             value: decoded_value,
         }
     }
-}
 
-/// Internal function used to decode the raw data into a [DecodedAttribute].
-///
-/// # Params
-/// - `step` - byte array of at least 64 bytes.
-///
-/// # Returns
-/// - `None` for an invalid property (invalid value length or invalid utf-8
-///   data).
-/// - `Some(_)` otherwise
-pub(crate) fn decode_attribute(step: &[u8]) -> Option<DecodedAttribute> {
-    let raw_key = &step[0..8];
+    /// Decode raw data into a [DecodedAttribute].
+    ///
+    /// # Params
+    /// - `encoded` - byte array of at least 64 bytes.
+    ///
+    /// # Returns
+    /// - `None` for an invalid property (invalid value length or invalid utf-8
+    ///   data).
+    /// - `Some(_)` otherwise
+    pub fn decode(encoded: &[u8]) -> Option<DecodedAttribute> {
+        let raw_key = &encoded[0..8];
 
-    let decoder_key = utf8_decode::Decoder::new(raw_key.iter().cloned());
+        let key = std::str::from_utf8(raw_key)
+            .ok()?
+            .trim_end_matches('\0')
+            .to_string();
 
-    let mut key = String::new();
-    for n in decoder_key {
-        key.push(n.expect("Error getting key for attributes."));
+        let vlen = encoded[8];
+
+        if vlen > DecodedAttribute::ATTRIBUTE_LEN || vlen == 0 {
+            return None;
+        }
+
+        let raw_value = &encoded[9..(9 + vlen as usize)];
+
+        let value = std::str::from_utf8(raw_value)
+            .ok()?
+            .trim_end_matches('\0')
+            .to_string();
+
+        Some(DecodedAttribute::new(key, value))
     }
-
-    key = key.trim_end_matches('\0').to_string();
-    let vlen = step[8];
-
-    if vlen > 55 || vlen == 0 {
-        return None;
-    }
-    let raw_value = &step[9..(9 + vlen as usize)];
-    let decoder_value = utf8_decode::Decoder::new(raw_value.iter().cloned());
-
-    let mut value = String::new();
-
-    for n in decoder_value {
-        value.push(n.expect("Error getting key for attributes."));
-    }
-
-    value = value.trim_end_matches('\0').to_string();
-    Some(DecodedAttribute::new(key, value))
-}
-
-// TODO(eva-cosma) replace this function with std::str::from_utf8(...). It
-// does the same thing.
-
-/// Transform a byte-slice into a String.
-///
-/// # Panics
-///
-/// This code panics if the given bytes are not utf-8 representable
-pub(crate) fn bytes_to_string(raw: &[u8]) -> String {
-    let decoder = utf8_decode::Decoder::new(raw.iter().cloned());
-
-    let mut string = String::new();
-    for n in decoder {
-        string.push(n.expect("Error getting key for attributes."));
-    }
-    string
 }

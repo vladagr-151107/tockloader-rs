@@ -103,12 +103,16 @@ pub enum TockError {
 
 /// Represents errors that can occur while parsing attributes.
 #[derive(Debug, Error)]
+#[allow(clippy::enum_variant_names)]
 pub enum AttributeParseError {
     #[error("Expected attribute to be a valid number. Inner: {0}")]
     InvalidNumber(#[from] std::num::ParseIntError),
 
     #[error("Expected attribute to be a valid string. Inner: {0}")]
     InvalidString(#[from] std::string::FromUtf8Error),
+
+    #[error("Expected sentinel to be TOCK")]
+    InvalidSentinel,
 }
 
 /// Represents internal violations of assumptions, or inconsistent state. It

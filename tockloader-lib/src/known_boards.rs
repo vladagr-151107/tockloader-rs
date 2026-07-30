@@ -24,7 +24,8 @@ impl KnownBoard for NucleoF4 {
     fn get_settings(&self) -> BoardSettings {
         BoardSettings {
             arch: Some("cortex-m4".to_string()),
-            start_address: 0x08040000,
+            flash_start_address: 0x08000000,
+            app_start_address: 0x08040000,
             page_size: 512,
             ram_start_address: 0x20000000,
         }
@@ -48,7 +49,8 @@ impl KnownBoard for MicrobitV2 {
     fn get_settings(&self) -> BoardSettings {
         BoardSettings {
             arch: Some("cortex-m4".to_string()),
-            start_address: 0x00040000,
+            flash_start_address: 0x00000000,
+            app_start_address: 0x00040000,
             page_size: 512,
             ram_start_address: 0x20000000,
         }
@@ -72,7 +74,8 @@ impl KnownBoard for Nrf52840dk {
     fn get_settings(&self) -> BoardSettings {
         BoardSettings {
             arch: Some("cortex-m4".to_string()),
-            start_address: 0x00040000,
+            flash_start_address: 0x00000000,
+            app_start_address: 0x00040000,
             page_size: 4096,
             ram_start_address: 0x20008000,
         }
@@ -96,7 +99,8 @@ impl KnownBoard for NucleoU545ReQ {
     fn get_settings(&self) -> BoardSettings {
         BoardSettings {
             arch: Some("cortex-m4".to_string()),
-            start_address: 0x08000000,
+            flash_start_address: 0x08000000,
+            app_start_address: 0x08040000,
             page_size: 8192,
             ram_start_address: 0x20000000,
         }

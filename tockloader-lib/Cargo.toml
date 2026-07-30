@@ -12,7 +12,6 @@ tokio = { version = "1.32.0", features = ["full"] }
 tokio-serial = { version = "5.4.4", features = ["libudev"] }
 probe-rs = "0.24.0"
 tbf-parser = { path = "../tbf-parser" }
-utf8-decode = "1.0.1"
 byteorder = "1.5.0"
 tar = "0.4.41"
 bytes = "1.7.1"

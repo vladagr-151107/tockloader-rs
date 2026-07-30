@@ -21,7 +21,7 @@ impl CommandInstall for TockloaderConnection {
         // obtain the binaries in a vector
         let mut app_binaries: Vec<Vec<u8>> = Vec::new();
 
-        let mut address = settings.start_address;
+        let mut address = settings.app_start_address;
         for app in app_attributes_list.iter() {
             app_binaries.push(
                 self.read(address, app.tbf_header.total_size() as usize)
@@ -45,7 +45,7 @@ impl CommandInstall for TockloaderConnection {
 
         log::debug!("pkt len {}", pkt.len());
         // write the pkt
-        let _ = self.write(settings.start_address, &pkt).await;
+        let _ = self.write(settings.app_start_address, &pkt).await;
         Ok(())
     }
 }
