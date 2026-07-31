@@ -394,7 +394,7 @@ pub fn reshuffle_apps(
                             installed: false,
                             idx: None,
                             ram_address: None,
-                            address: settings.app_start_address + insert_size,
+                            address: gap_start,
                             size: needed_padding,
                         });
                         reordered_apps.push(c_app.as_index(None, gap_start + needed_padding));

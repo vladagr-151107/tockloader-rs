@@ -16,6 +16,7 @@ impl CommandInstall for TockloaderConnection {
     async fn install_app(&mut self, tab: Tab, resolution: InstallResolution) -> Result<(), TockloaderError> {
         let settings = self.get_settings();
         let app_attributes_list: Vec<AppAttributes> = self.list().await?;
+        //create the list of names of the apps on the board
         let names: Vec<Option<&str>> = app_attributes_list
             .iter()
             .map(|a| a.tbf_header.get_package_name())
