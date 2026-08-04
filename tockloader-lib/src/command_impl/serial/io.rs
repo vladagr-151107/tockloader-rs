@@ -59,6 +59,14 @@ impl IO for SerialConnection {
         let _ = issue_command(stream, Command::ErasePage, pkt, true, 0, Response::OK).await?;
         Ok(())
     }
+
+    async fn erase_page(&mut self, address: u64) -> Result<(), TockloaderError> {
+        let stream = self.stream.as_mut().expect("Board must be open.");
+
+        let pkt = (address as u32).to_le_bytes().to_vec();
+        let _ = issue_command(stream, Command::ErasePage, pkt, true, 0, Response::OK).await?;
+        Ok(())
+    }
 }
 
 #[async_trait]

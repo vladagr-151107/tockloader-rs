@@ -21,6 +21,13 @@ impl IO for TockloaderConnection {
             TockloaderConnection::Serial(conn) => conn.write(address, pkt).await,
         }
     }
+
+    async fn erase_page(&mut self, address: u64) -> Result<(), TockloaderError> {
+        match self {
+            TockloaderConnection::ProbeRS(conn) => conn.erase_page(address).await,
+            TockloaderConnection::Serial(conn) => conn.erase_page(address).await,
+        }
+    }
 }
 
 #[async_trait]

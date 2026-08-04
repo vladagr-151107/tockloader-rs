@@ -60,6 +60,8 @@ pub trait IO: Send {
     async fn read(&mut self, address: u64, size: usize) -> Result<Vec<u8>, TockloaderError>;
 
     async fn write(&mut self, address: u64, pkt: &[u8]) -> Result<(), TockloaderError>;
+
+    async fn erase_page(&mut self, address: u64) -> Result<(), TockloaderError>;
 }
 
 #[async_trait]

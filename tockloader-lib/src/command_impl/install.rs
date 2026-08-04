@@ -45,7 +45,12 @@ impl CommandInstall for TockloaderConnection {
 
         log::debug!("pkt len {}", pkt.len());
         // write the pkt
-        let _ = self.write(settings.app_start_address, &pkt).await;
+        self.write(settings.app_start_address, &pkt).await?;
+
+        // erase exactly one page right after the just written apps
+        let tail_addr = settings.app_start_address + pkt.len() as u64;
+        self.erase_page(tail_addr).await?;
+
         Ok(())
     }
 }

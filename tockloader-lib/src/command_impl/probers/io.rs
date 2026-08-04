@@ -37,6 +37,22 @@ impl IO for ProbeRSConnection {
         loader.commit(session, options)?;
         Ok(())
     }
+
+    async fn erase_page(&mut self, address: u64) -> Result<(), TockloaderError> {
+        if !self.is_open() {
+            return Err(InternalError::ConnectionNotOpen.into());
+        }
+        let session = self.session.as_mut().expect("Board must be open");
+        let mut loader = session.target().flash_loader();
+
+        loader.add_data(address, &[0u8])?;
+
+        let mut options = DownloadOptions::default();
+        options.keep_unwritten_bytes = true;
+
+        loader.commit(session, options)?;
+        Ok(())
+    }
 }
 
 #[async_trait]
