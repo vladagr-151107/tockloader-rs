@@ -12,7 +12,7 @@ impl CommandEraseApps for TockloaderConnection {
         let settings = self.get_settings();
 
         let app_attributes_list: Vec<AppAttributes> = self.list().await?;
-        
+
         // if there are no apps on board, invalidate the first header
         if app_attributes_list.is_empty() {
             self.erase_page(settings.app_start_address).await?;
