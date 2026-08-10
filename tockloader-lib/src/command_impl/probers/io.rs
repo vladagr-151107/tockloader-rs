@@ -42,13 +42,13 @@ impl IO for ProbeRSConnection {
         if !self.is_open() {
             return Err(InternalError::ConnectionNotOpen.into());
         }
+        let page_size = self.settings.page_size as usize;
         let session = self.session.as_mut().expect("Board must be open");
         let mut loader = session.target().flash_loader();
-
-        loader.add_data(address, &[0u8])?;
+        loader.add_data(address, &vec![0xFFu8; page_size])?;
 
         let mut options = DownloadOptions::default();
-        options.keep_unwritten_bytes = true;
+        options.keep_unwritten_bytes = false;
 
         loader.commit(session, options)?;
         Ok(())
