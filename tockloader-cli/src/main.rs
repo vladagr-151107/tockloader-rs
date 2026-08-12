@@ -235,9 +235,16 @@ async fn main() -> Result<()> {
             let tab_file = Tab::open(sub_matches.get_one::<String>("tab").unwrap().to_string())
                 .context("Failed to use provided tab file.")?;
 
+            let no_replace = sub_matches.get_flag("no-replace");
+            let resolution = if no_replace {
+                InstallResolution::InstallAsNew
+            } else {
+                InstallResolution::Overwrite
+            };
+
             let mut conn = open_connection(sub_matches).await?;
 
-            conn.install_app(tab_file, InstallResolution::Overwrite)
+            conn.install_app(tab_file, resolution)
                 .await
                 .context("Failed to install app.")?;
         }

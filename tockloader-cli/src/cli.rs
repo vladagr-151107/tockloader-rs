@@ -70,6 +70,8 @@ fn get_app_args() -> Vec<clap::Arg> {
         arg!(-a --"app-address" <ADDRESS> "Address where apps are located")
             .conflicts_with_all(probe_args_ids.clone().collect::<Vec<_>>()),
         arg!(--tab <TAB> "Specify the path of the tab file"),
+        arg!(--"no-replace" "Install alongside an existing app of the same name instead of overwriting it")
+            .action(clap::ArgAction::SetTrue),
     ]
     // Note: the .action(clap::ArgAction::SetTrue) doesn't seem to be necessary, though in clap documentation it is used.
 }
