@@ -1,19 +1,25 @@
 use async_trait::async_trait;
 
 use crate::attributes::app_attributes::AppAttributes;
-use crate::command_impl::reshuffle_apps::{create_pkt, reshuffle_apps, find_conflicting_app, TockApp};
+use crate::command_impl::reshuffle_apps::{
+    create_pkt, find_conflicting_app, reshuffle_apps, TockApp,
+};
 use crate::connection::{Connection, TockloaderConnection};
 use crate::errors::{InternalError, TockloaderError};
 use crate::tabs::tab::Tab;
 use crate::{CommandInstall, CommandList, IO};
 
 pub enum InstallResolution {
-    Overwrite, 
+    Overwrite,
     InstallAsNew,
 }
 #[async_trait]
 impl CommandInstall for TockloaderConnection {
-    async fn install_app(&mut self, tab: Tab, resolution: InstallResolution) -> Result<(), TockloaderError> {
+    async fn install_app(
+        &mut self,
+        tab: Tab,
+        resolution: InstallResolution,
+    ) -> Result<(), TockloaderError> {
         let settings = self.get_settings();
         let app_attributes_list: Vec<AppAttributes> = self.list().await?;
         //create the list of names of the apps on the board
@@ -25,7 +31,9 @@ impl CommandInstall for TockloaderConnection {
         let mut tock_app_list: Vec<TockApp> = app_attributes_list
             .iter()
             .enumerate()
-            .filter(|(i, _)| !(matches!(resolution, InstallResolution::Overwrite) && Some(*i) == conflict_idx))
+            .filter(|(i, _)| {
+                !(matches!(resolution, InstallResolution::Overwrite) && Some(*i) == conflict_idx)
+            })
             .map(|(_, a)| TockApp::from_app_attributes(a))
             .collect();
         log::info!("tock apps len {:?}", tock_app_list.len());
@@ -63,7 +71,8 @@ impl CommandInstall for TockloaderConnection {
 
     async fn find_conflicting_app(&mut self, tab: &Tab) -> Result<Option<String>, TockloaderError> {
         let app_attributes_list = self.list().await?;
-        Ok(app_attributes_list.iter()
+        Ok(app_attributes_list
+            .iter()
             .find(|a| a.tbf_header.get_package_name() == Some(tab.name()))
             .map(|_| tab.name().to_string()))
     }

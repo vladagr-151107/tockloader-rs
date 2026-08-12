@@ -18,9 +18,9 @@ use tokio_serial::SerialPortInfo;
 use crate::attributes::app_attributes::AppAttributes;
 use crate::attributes::general_attributes::GeneralAttributes;
 use crate::attributes::system_attributes::SystemAttributes;
+use crate::command_impl::install::InstallResolution;
 use crate::errors::*;
 use crate::tabs::tab::Tab;
-use crate::command_impl::install::InstallResolution;
 
 pub fn list_debug_probes() -> Vec<DebugProbeInfo> {
     probe_rs::probe::list::Lister::new().list_all()
@@ -48,7 +48,11 @@ pub trait CommandInfo {
 
 #[async_trait]
 pub trait CommandInstall {
-    async fn install_app(&mut self, tab_file: Tab, resolution: InstallResolution) -> Result<(), TockloaderError>;
+    async fn install_app(
+        &mut self,
+        tab_file: Tab,
+        resolution: InstallResolution,
+    ) -> Result<(), TockloaderError>;
     async fn find_conflicting_app(&mut self, tab: &Tab) -> Result<Option<String>, TockloaderError>;
 }
 

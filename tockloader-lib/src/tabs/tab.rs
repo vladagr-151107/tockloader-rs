@@ -140,7 +140,7 @@ impl Tab {
 
         Err(TabError::MissingBinary(arch.to_owned()).into())
     }
-    pub fn name(&self) -> &str{
+    pub fn name(&self) -> &str {
         &self.metadata.name
     }
 }
