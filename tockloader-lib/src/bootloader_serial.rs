@@ -7,6 +7,7 @@
 use crate::errors::{self, InternalError, TockError};
 use bytes::BytesMut;
 use errors::TockloaderError;
+use log::trace;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_serial::{SerialPort, SerialStream};
@@ -161,9 +162,13 @@ pub async fn ping_bootloader_and_wait_for_response(
 ) -> Result<(), TockloaderError> {
     let ping_pkt = [ESCAPE_CHAR, Command::Ping as u8];
 
-    for _ in 0..30 {
+    for attempt in 0..30 {
+        trace!("Attempt {} at connecting to the bootloader", attempt + 1);
         write_bytes(port, &ping_pkt, DEFAULT_TIMEOUT).await?;
-        let ret = read_bytes(port, 2, DEFAULT_TIMEOUT).await?;
+        let ret = match read_bytes(port, 2, DEFAULT_TIMEOUT).await {
+            Ok(buf) => buf,
+            Err(_) => continue,
+        };
 
         if ret[1] == Response::Pong as u8 {
             return Ok(());
