@@ -11,6 +11,9 @@ use core::convert::TryInto;
 use core::mem::size_of;
 use core::{fmt, str};
 
+// Flags crate
+use bitflags::bitflags;
+
 /// We only support up to a fixed number of storage permissions for each of read
 /// and modify. This simplification enables us to use fixed sized buffers.
 const NUM_STORAGE_PERMISSIONS: usize = 8;
@@ -124,6 +127,23 @@ pub struct TbfHeaderV2Base {
     pub(crate) total_size: u32,
     pub(crate) flags: u32,
     pub(crate) checksum: u32,
+}
+
+bitflags! {
+    /// TBF flags
+    ///
+    /// The available flags can be found here. The remaining bits are reserved
+    /// https://book.tockos.org/doc/tock_binary_format?tbf-header-base#tbf-header-base
+    pub struct Flags: u32 {
+        const Enabled = 1;
+        const Sticky = 1 << 1;
+    }
+}
+
+impl Flags {
+    pub fn as_u32(&self) -> u32 {
+        self.bits()
+    }
 }
 
 /// Types in TLV structures for each optional block of the header.
@@ -912,6 +932,67 @@ impl TbfHeader {
         }
     }
 
+    pub fn set_flags(&mut self, flags: Flags) {
+        match self {
+            TbfHeader::TbfHeaderV2(hd) => {
+                let old_flags = hd.base.flags;
+                hd.base.flags = flags.as_u32();
+                self.compute_checksum_flags(old_flags);
+            }
+            TbfHeader::Padding(hd) => {
+                let old_flags = hd.flags;
+                hd.flags = flags.as_u32();
+                self.compute_checksum_flags(old_flags);
+            }
+        }
+    }
+
+    pub fn set_enabled(&mut self, enabled: bool) {
+        match self {
+            TbfHeader::TbfHeaderV2(hd) => {
+                let old_flags = hd.base.flags;
+                if enabled {
+                    hd.base.flags |= Flags::Enabled.as_u32();
+                } else {
+                    hd.base.flags &= !Flags::Enabled.as_u32();
+                }
+                self.compute_checksum_flags(old_flags);
+            }
+            TbfHeader::Padding(hd) => {
+                let old_flags = hd.flags;
+                if enabled {
+                    hd.flags |= Flags::Enabled.as_u32();
+                } else {
+                    hd.flags &= !Flags::Enabled.as_u32();
+                }
+                self.compute_checksum_flags(old_flags);
+            }
+        }
+    }
+
+    pub fn set_sticky(&mut self, sticky: bool) {
+        match self {
+            TbfHeader::TbfHeaderV2(hd) => {
+                let old_flags = hd.base.flags;
+                if sticky {
+                    hd.base.flags |= Flags::Sticky.as_u32();
+                } else {
+                    hd.base.flags &= !Flags::Sticky.as_u32();
+                }
+                self.compute_checksum_flags(old_flags);
+            }
+            TbfHeader::Padding(hd) => {
+                let old_flags = hd.flags;
+                if sticky {
+                    hd.flags |= Flags::Sticky.as_u32();
+                } else {
+                    hd.flags &= !Flags::Sticky.as_u32();
+                }
+                self.compute_checksum_flags(old_flags);
+            }
+        }
+    }
+
     /// Return total size of the application.
     pub fn total_size(&self) -> u32 {
         match *self {
@@ -925,6 +1006,31 @@ impl TbfHeader {
         match *self {
             TbfHeader::TbfHeaderV2(hd) => hd.base.checksum,
             TbfHeader::Padding(_) => 0,
+        }
+    }
+
+    pub fn compute_checksum_flags(&mut self, old_flags: u32) {
+        match self {
+            TbfHeader::TbfHeaderV2(hd) => {
+                let mut checksum = hd.base.checksum;
+
+                // remove contribution of old flags
+                checksum ^= old_flags;
+
+                // add new flags contribution
+                checksum ^= hd.base.flags;
+
+                // we cannot compute the full checksum using only the base, we reuse the old checksum
+                hd.base.checksum = checksum;
+            }
+            TbfHeader::Padding(hd) => {
+                let mut checksum = hd.checksum;
+
+                checksum ^= old_flags;
+                checksum ^= hd.flags;
+
+                hd.checksum = checksum;
+            }
         }
     }
 
@@ -1209,5 +1315,19 @@ impl TbfHeader {
             TbfHeader::TbfHeaderV2(hd) => hd.short_id.and_then(|si| si.short_id),
             _ => None,
         }
+    }
+
+    pub fn serialize(&self) -> [u8; 16] {
+        let base = match self {
+            TbfHeader::TbfHeaderV2(hd) => &hd.base,
+            TbfHeader::Padding(base) => base,
+        };
+        let mut bytes = [0u8; 16];
+        bytes[0..2].copy_from_slice(&base.version.to_le_bytes());
+        bytes[2..4].copy_from_slice(&base.header_size.to_le_bytes());
+        bytes[4..8].copy_from_slice(&base.total_size.to_le_bytes());
+        bytes[8..12].copy_from_slice(&base.flags.to_le_bytes());
+        bytes[12..16].copy_from_slice(&base.checksum.to_le_bytes());
+        bytes
     }
 }
