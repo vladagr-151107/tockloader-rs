@@ -932,6 +932,10 @@ impl TbfHeader {
         }
     }
 
+    /// Set the flags field to the given value and update the checksum
+    /// accordingly
+    ///
+    /// DELTA: originally did not exist
     pub fn set_flags(&mut self, flags: Flags) {
         match self {
             TbfHeader::TbfHeaderV2(hd) => {
@@ -947,6 +951,10 @@ impl TbfHeader {
         }
     }
 
+    /// Enable or disable the application by setting/clearing the enabled
+    /// bit in the flags field, updating the checksum accordingly.
+    ///
+    /// DELTA: originally did not exist
     pub fn set_enabled(&mut self, enabled: bool) {
         match self {
             TbfHeader::TbfHeaderV2(hd) => {
@@ -970,6 +978,10 @@ impl TbfHeader {
         }
     }
 
+    /// Mark the application as sticky or not by setting/clearing the
+    /// sticky bit in the flags field, updating the checksum accordingly.
+    ///
+    /// DELTA: originally did not exist
     pub fn set_sticky(&mut self, sticky: bool) {
         match self {
             TbfHeader::TbfHeaderV2(hd) => {
@@ -1009,6 +1021,15 @@ impl TbfHeader {
         }
     }
 
+    /// Update the header checksum after a flags change, without
+    /// recomputing it from scratch.
+    ///
+    /// This only works correctly if `flags` is the only field that changed
+    /// since the checksum was last valid — it XORs out `old_flags` and XORs
+    /// in the current flags value. Do not use this after any other field
+    /// has been modified.
+    ///
+    /// DELTA: originally did not exist
     pub fn compute_checksum_flags(&mut self, old_flags: u32) {
         match self {
             TbfHeader::TbfHeaderV2(hd) => {
@@ -1317,6 +1338,11 @@ impl TbfHeader {
         }
     }
 
+    /// Serialize the 16-byte base header back into bytes.
+    ///
+    /// Note: this only serializes `TbfHeaderV2Base`/`Padding` fields
+    ///
+    /// DELTA: originally did not exist
     pub fn serialize(&self) -> [u8; 16] {
         let base = match self {
             TbfHeader::TbfHeaderV2(hd) => &hd.base,
