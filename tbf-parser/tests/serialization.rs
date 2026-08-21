@@ -1,4 +1,6 @@
+use core::convert::TryFrom;
 use tbf_parser::parse::*;
+use tbf_parser::types;
 use tbf_parser::types::Flags;
 
 // Serialization
@@ -155,4 +157,13 @@ fn corrupt() {
 
     let result = parse_tbf_header(&buffer[0..header_len as usize], 2);
     assert!(result.is_err());
+}
+
+#[test]
+fn main_tlv_matches_fixture() {
+    let buffer = include_bytes!("./flashes/simple.dat");
+    let mut out = [0u8; 16];
+    let main = types::TbfHeaderV2Main::try_from(&buffer[20..32]).unwrap();
+    types::serialize_main(&main, &mut out, 0);
+    assert_eq!(&out[0..16], &buffer[16..32]);
 }

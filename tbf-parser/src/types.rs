@@ -891,6 +891,32 @@ pub enum TbfHeader {
     Padding(TbfHeaderV2Base),
 }
 
+/// Write a single TLV entry (type, length, value) into `out` starting at
+/// `offset`, padding the value to a 4-byte boundary as required by the
+/// TBF format. Returns the offset just past the written (padded) entry.
+pub fn write_tlv(out: &mut [u8], offset: usize, tipe: u16, value: &[u8]) -> usize {
+    let mut pos = offset;
+    out[pos..pos + 2].copy_from_slice(&tipe.to_le_bytes());
+    pos += 2;
+    out[pos..pos + 2].copy_from_slice(&(value.len() as u16).to_le_bytes());
+    pos += 2;
+    out[pos..pos + value.len()].copy_from_slice(value);
+    pos += value.len();
+    let pad = (4 - (value.len() % 4)) % 4;
+    for b in &mut out[pos..pos + pad] {
+        *b = 0;
+    }
+    pos + pad
+}
+
+pub fn serialize_main(main: &TbfHeaderV2Main, out: &mut [u8], offset: usize) -> usize {
+    let mut value = [0u8; 12];
+    value[0..4].copy_from_slice(&main.init_fn_offset.to_le_bytes());
+    value[4..8].copy_from_slice(&main.protected_trailer_size.to_le_bytes());
+    value[8..12].copy_from_slice(&main.minimum_ram_size.to_le_bytes());
+    write_tlv(out, offset, 1, &value)
+}
+
 impl TbfHeader {
     /// Return the length of the header.
     pub fn length(&self) -> u16 {
