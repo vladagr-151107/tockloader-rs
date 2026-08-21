@@ -917,6 +917,14 @@ pub fn serialize_main(main: &TbfHeaderV2Main, out: &mut [u8], offset: usize) -> 
     write_tlv(out, offset, 1, &value)
 }
 
+pub fn serialize_package_name<const L: usize>(
+    name: &TbfHeaderV2PackageName<L>,
+    out: &mut [u8],
+    offset: usize,
+) -> usize {
+    write_tlv(out, offset, 3, &name.buffer[0..name.size as usize])
+}
+
 impl TbfHeader {
     /// Return the length of the header.
     pub fn length(&self) -> u16 {

@@ -167,3 +167,12 @@ fn main_tlv_matches_fixture() {
     types::serialize_main(&main, &mut out, 0);
     assert_eq!(&out[0..16], &buffer[16..32]);
 }
+
+#[test]
+fn package_name_tlv_matches_fixture() {
+    let buffer = include_bytes!("./flashes/simple.dat");
+    let mut out = [0u8; 12];
+    let name = types::TbfHeaderV2PackageName::<64>::try_from(&buffer[36..42]).unwrap();
+    types::serialize_package_name(&name, &mut out, 0);
+    assert_eq!(&out[0..12], &buffer[32..44]);
+}
