@@ -176,3 +176,15 @@ fn package_name_tlv_matches_fixture() {
     types::serialize_package_name(&name, &mut out, 0);
     assert_eq!(&out[0..12], &buffer[32..44]);
 }
+
+#[test]
+fn short_id_tlv_round_trips() {
+    let mut out = [0u8; 8];
+    let short_id = types::TbfHeaderV2ShortId::try_from(&42u32.to_le_bytes()[..]).unwrap();
+
+    types::serialize_short_id(&short_id, &mut out, 0);
+
+    assert_eq!(&out[0..2], &10u16.to_le_bytes());
+    assert_eq!(&out[2..4], &4u16.to_le_bytes());
+    assert_eq!(&out[4..8], &42u32.to_le_bytes());
+}

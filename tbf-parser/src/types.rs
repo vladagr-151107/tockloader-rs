@@ -925,6 +925,11 @@ pub fn serialize_package_name<const L: usize>(
     write_tlv(out, offset, 3, &name.buffer[0..name.size as usize])
 }
 
+pub fn serialize_short_id(short_id: &TbfHeaderV2ShortId, out: &mut [u8], offset: usize) {
+    let value = short_id.short_id.map_or(0u32, |id| id.get());
+    write_tlv(out, offset, 10, &value.to_le_bytes());
+}
+
 impl TbfHeader {
     /// Return the length of the header.
     pub fn length(&self) -> u16 {
