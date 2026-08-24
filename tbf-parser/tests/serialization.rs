@@ -218,3 +218,25 @@ fn short_id_tlv_round_trips() {
     assert_eq!(&out[2..4], &4u16.to_le_bytes());
     assert_eq!(&out[4..8], &42u32.to_le_bytes());
 }
+
+#[test]
+fn writeable_regions_tlv_round_trips() {
+    let mut out = [0u8; 20];
+    let region1 = types::TbfHeaderV2WriteableFlashRegion::try_from(
+        &[0x00, 0x10, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00][..],
+    )
+    .unwrap();
+    let region2 = types::TbfHeaderV2WriteableFlashRegion::try_from(
+        &[0x00, 0x20, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00][..],
+    )
+    .unwrap();
+    let regions = [Some(region1), Some(region2), None, None];
+    types::serialize_writeable_regions(&regions, &mut out, 0);
+
+    assert_eq!(&out[0..2], &2u16.to_le_bytes());
+    assert_eq!(&out[2..4], &16u16.to_le_bytes());
+    assert_eq!(&out[4..8], &0x1000u32.to_le_bytes());
+    assert_eq!(&out[8..12], &0x200u32.to_le_bytes());
+    assert_eq!(&out[12..16], &0x2000u32.to_le_bytes());
+    assert_eq!(&out[16..20], &0x400u32.to_le_bytes());
+}

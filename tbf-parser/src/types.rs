@@ -962,6 +962,23 @@ pub fn serialize_short_id(short_id: &TbfHeaderV2ShortId, out: &mut [u8], offset:
     write_tlv(out, offset, 10, &value.to_le_bytes());
 }
 
+pub fn serialize_writeable_regions(
+    regions: &[Option<TbfHeaderV2WriteableFlashRegion>; 4],
+    out: &mut [u8],
+    offset: usize,
+) -> usize {
+    let mut value = [0u8; 32];
+    let mut len = 0;
+
+    for region in regions.iter().flatten() {
+        value[len..len + 4].copy_from_slice(&region.writeable_flash_region_offset.to_le_bytes());
+        value[len + 4..len + 8].copy_from_slice(&region.writeable_flash_region_size.to_le_bytes());
+        len += 8;
+    }
+
+    write_tlv(out, offset, 2, &value[..len])
+}
+
 impl TbfHeader {
     /// Return the length of the header.
     pub fn length(&self) -> u16 {
