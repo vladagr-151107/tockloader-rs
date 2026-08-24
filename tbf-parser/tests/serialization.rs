@@ -169,6 +169,15 @@ fn main_tlv_matches_fixture() {
 }
 
 #[test]
+fn program_tlv_matches_fixture() {
+    let buffer = include_bytes!("./flashes/footerSHA256.dat");
+    let mut out = [0u8; 24];
+    let program = types::TbfHeaderV2Program::try_from(&buffer[36..56]).unwrap();
+    types::serialize_program(&program, &mut out, 0);
+    assert_eq!(&out[0..24], &buffer[32..56]);
+}
+
+#[test]
 fn package_name_tlv_matches_fixture() {
     let buffer = include_bytes!("./flashes/simple.dat");
     let mut out = [0u8; 12];

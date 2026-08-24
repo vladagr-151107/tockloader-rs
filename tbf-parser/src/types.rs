@@ -917,6 +917,16 @@ pub fn serialize_main(main: &TbfHeaderV2Main, out: &mut [u8], offset: usize) -> 
     write_tlv(out, offset, 1, &value)
 }
 
+pub fn serialize_program(program: &TbfHeaderV2Program, out: &mut [u8], offset: usize) -> usize {
+    let mut value = [0u8; 20];
+    value[0..4].copy_from_slice(&program.init_fn_offset.to_le_bytes());
+    value[4..8].copy_from_slice(&program.protected_trailer_size.to_le_bytes());
+    value[8..12].copy_from_slice(&program.minimum_ram_size.to_le_bytes());
+    value[12..16].copy_from_slice(&program.binary_end_offset.to_le_bytes());
+    value[16..20].copy_from_slice(&program.version.to_le_bytes());
+    write_tlv(out, offset, 9, &value)
+}
+
 pub fn serialize_package_name<const L: usize>(
     name: &TbfHeaderV2PackageName<L>,
     out: &mut [u8],
