@@ -938,6 +938,17 @@ pub fn serialize_fixed_addresses(
     write_tlv(out, offset, 5, &value)
 }
 
+pub fn serialize_kernel_version(
+    kernel_version: &TbfHeaderV2KernelVersion,
+    out: &mut [u8],
+    offset: usize,
+) -> usize {
+    let mut value = [0u8; 4];
+    value[0..2].copy_from_slice(&kernel_version.major.to_le_bytes());
+    value[2..4].copy_from_slice(&kernel_version.minor.to_le_bytes());
+    write_tlv(out, offset, 8, &value)
+}
+
 pub fn serialize_package_name<const L: usize>(
     name: &TbfHeaderV2PackageName<L>,
     out: &mut [u8],

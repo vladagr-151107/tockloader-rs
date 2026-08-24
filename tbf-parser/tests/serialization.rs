@@ -178,6 +178,15 @@ fn program_tlv_matches_fixture() {
 }
 
 #[test]
+fn kernel_version_tlv_matches_fixture() {
+    let buffer = include_bytes!("./flashes/simple.dat");
+    let mut out = [0u8; 8];
+    let kernel_version = types::TbfHeaderV2KernelVersion::try_from(&buffer[48..52]).unwrap();
+    types::serialize_kernel_version(&kernel_version, &mut out, 0);
+    assert_eq!(&out[0..8], &buffer[44..52]);
+}
+
+#[test]
 fn fixed_addresses_tlv_round_trips() {
     let mut out = [0u8; 12];
     let bytes: [u8; 8] = [0x00, 0x10, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00];
