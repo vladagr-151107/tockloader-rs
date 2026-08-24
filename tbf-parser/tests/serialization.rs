@@ -178,6 +178,18 @@ fn program_tlv_matches_fixture() {
 }
 
 #[test]
+fn fixed_addresses_tlv_round_trips() {
+    let mut out = [0u8; 12];
+    let bytes: [u8; 8] = [0x00, 0x10, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00];
+    let fixed_addresses = types::TbfHeaderV2FixedAddresses::try_from(&bytes[..]).unwrap();
+    types::serialize_fixed_addresses(&fixed_addresses, &mut out, 0);
+    assert_eq!(&out[0..2], &5u16.to_le_bytes());
+    assert_eq!(&out[2..4], &8u16.to_le_bytes());
+    assert_eq!(&out[4..8], &0x1000u32.to_le_bytes());
+    assert_eq!(&out[8..12], &0x2000u32.to_le_bytes());
+}
+
+#[test]
 fn package_name_tlv_matches_fixture() {
     let buffer = include_bytes!("./flashes/simple.dat");
     let mut out = [0u8; 12];

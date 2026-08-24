@@ -927,6 +927,17 @@ pub fn serialize_program(program: &TbfHeaderV2Program, out: &mut [u8], offset: u
     write_tlv(out, offset, 9, &value)
 }
 
+pub fn serialize_fixed_addresses(
+    fixed_addresses: &TbfHeaderV2FixedAddresses,
+    out: &mut [u8],
+    offset: usize,
+) -> usize {
+    let mut value = [0u8; 8];
+    value[0..4].copy_from_slice(&fixed_addresses.start_process_ram.to_le_bytes());
+    value[4..8].copy_from_slice(&fixed_addresses.start_process_flash.to_le_bytes());
+    write_tlv(out, offset, 5, &value)
+}
+
 pub fn serialize_package_name<const L: usize>(
     name: &TbfHeaderV2PackageName<L>,
     out: &mut [u8],
