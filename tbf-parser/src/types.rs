@@ -1008,6 +1008,29 @@ pub fn serialize_storage_permissions<const L: usize>(
     write_tlv(out, offset, 7, &value[..pos])
 }
 
+pub fn serialize_permissions<const L: usize>(
+    perms: &TbfHeaderV2Permissions<L>,
+    out: &mut [u8],
+    offset: usize,
+) -> usize {
+    let mut value = [0u8; 2 + 8 * 16]; // max L=8
+    let mut pos = 2;
+
+    value[0..2].copy_from_slice(&perms.length.to_le_bytes());
+
+    for i in 0..perms.length as usize {
+        let p = &perms.perms[i];
+        value[pos..pos + 4].copy_from_slice(&p.driver_number.to_le_bytes());
+        pos += 4;
+        value[pos..pos + 4].copy_from_slice(&p.offset.to_le_bytes());
+        pos += 4;
+        value[pos..pos + 8].copy_from_slice(&p.allowed_commands.to_le_bytes());
+        pos += 8;
+    }
+
+    write_tlv(out, offset, 6, &value[..pos])
+}
+
 impl TbfHeader {
     /// Return the length of the header.
     pub fn length(&self) -> u16 {

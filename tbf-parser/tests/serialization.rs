@@ -260,3 +260,23 @@ fn storage_permissions_tlv_round_trips() {
     assert_eq!(&out[2..4], &16u16.to_le_bytes());
     assert_eq!(&out[4..20], &bytes[..]);
 }
+
+#[test]
+fn permissions_tlv_round_trips() {
+    let mut out = [0u8; 24];
+
+    let mut bytes = [0u8; 18];
+    bytes[0..2].copy_from_slice(&1u16.to_le_bytes()); // length = 1
+    bytes[2..6].copy_from_slice(&5u32.to_le_bytes()); // driver_number = 5
+    bytes[6..10].copy_from_slice(&0u32.to_le_bytes()); // offset = 0
+    bytes[10..18].copy_from_slice(&0xFFu64.to_le_bytes()); // allowed_commands = 0xFF
+
+    let perms = types::TbfHeaderV2Permissions::<8>::try_from(&bytes[..]).unwrap();
+
+    types::serialize_permissions(&perms, &mut out, 0);
+
+    assert_eq!(&out[0..2], &6u16.to_le_bytes());
+    assert_eq!(&out[2..4], &18u16.to_le_bytes());
+    assert_eq!(&out[4..22.min(out.len())], &bytes[..]);
+    assert_eq!(&out[22..24], &[0, 0]);
+}
