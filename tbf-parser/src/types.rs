@@ -979,6 +979,35 @@ pub fn serialize_writeable_regions(
     write_tlv(out, offset, 2, &value[..len])
 }
 
+pub fn serialize_storage_permissions<const L: usize>(
+    perms: &TbfHeaderV2StoragePermissions<L>,
+    out: &mut [u8],
+    offset: usize,
+) -> usize {
+    let mut value = [0u8; 6 + 2 * 8 * 4]; // with extra for maximum L(8 IDs) in each list
+    let mut pos;
+
+    let write_id = perms.write_id.map_or(0u32, |id| id.get());
+    value[0..4].copy_from_slice(&write_id.to_le_bytes());
+    value[4..6].copy_from_slice(&perms.read_length.to_le_bytes());
+    pos = 6;
+
+    for i in 0..perms.read_length as usize {
+        value[pos..pos + 4].copy_from_slice(&perms.read_ids[i].to_le_bytes());
+        pos += 4;
+    }
+
+    value[pos..pos + 2].copy_from_slice(&perms.modify_length.to_le_bytes());
+    pos += 2;
+
+    for i in 0..perms.modify_length as usize {
+        value[pos..pos + 4].copy_from_slice(&perms.modify_ids[i].to_le_bytes());
+        pos += 4;
+    }
+
+    write_tlv(out, offset, 7, &value[..pos])
+}
+
 impl TbfHeader {
     /// Return the length of the header.
     pub fn length(&self) -> u16 {

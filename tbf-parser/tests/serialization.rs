@@ -240,3 +240,23 @@ fn writeable_regions_tlv_round_trips() {
     assert_eq!(&out[12..16], &0x2000u32.to_le_bytes());
     assert_eq!(&out[16..20], &0x400u32.to_le_bytes());
 }
+
+#[test]
+fn storage_permissions_tlv_round_trips() {
+    let mut out = [0u8; 20];
+
+    let mut bytes = [0u8; 16];
+    bytes[0..4].copy_from_slice(&7u32.to_le_bytes()); //write_id = 7
+    bytes[4..6].copy_from_slice(&1u16.to_le_bytes()); // read_length = 1
+    bytes[6..10].copy_from_slice(&42u32.to_le_bytes()); // read_ids[0] = 42
+    bytes[10..12].copy_from_slice(&1u16.to_le_bytes()); // modify_length = 1
+    bytes[12..16].copy_from_slice(&99u32.to_le_bytes()); // modify_ids[0] = 99
+
+    let perms = types::TbfHeaderV2StoragePermissions::<8>::try_from(&bytes[..]).unwrap();
+
+    types::serialize_storage_permissions(&perms, &mut out, 0);
+
+    assert_eq!(&out[0..2], &7u16.to_le_bytes());
+    assert_eq!(&out[2..4], &16u16.to_le_bytes());
+    assert_eq!(&out[4..20], &bytes[..]);
+}
