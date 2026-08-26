@@ -14,10 +14,10 @@ fn serialize_identical_with_original() {
         .unwrap();
 
     let header = parse_tbf_header(&buffer[0..header_len as usize], 2).unwrap();
-    let serialized = header.serialize();
+    let (serialized, len) = header.serialize();
 
     // Check if serialize matches original buffer
-    assert_eq!(&buffer[0..16], &serialized[..]);
+    assert_eq!(&buffer[0..header_len as usize], &serialized[..len]);
 }
 
 // Flag modifications
@@ -38,8 +38,8 @@ fn flags_modifications() {
 
     // Disable
     header.set_enabled(false);
-    let serialized = header.serialize();
-    buffer[0..16].copy_from_slice(&serialized);
+    let (serialized, _len) = header.serialize();
+    buffer[0..16].copy_from_slice(&serialized[..16]);
 
     let reparsed = parse_tbf_header(&buffer[0..header_len as usize], 2).unwrap();
     assert!(!reparsed.enabled());
@@ -47,8 +47,8 @@ fn flags_modifications() {
     // Enable
     let mut header = reparsed;
     header.set_enabled(true);
-    let serialized = header.serialize();
-    buffer[0..16].copy_from_slice(&serialized);
+    let (serialized, _len) = header.serialize();
+    buffer[0..16].copy_from_slice(&serialized[..16]);
 
     let reparsed = parse_tbf_header(&buffer[0..header_len as usize], 2).unwrap();
     assert!(reparsed.enabled());
@@ -71,7 +71,7 @@ fn padding_header_set_flags() {
     let flags = Flags::Enabled | Flags::Sticky;
     header.set_flags(flags);
 
-    let serialized = header.serialize();
+    let (serialized, _len) = header.serialize();
     let flags = u32::from_le_bytes(serialized[8..12].try_into().unwrap());
     assert_eq!(flags, (Flags::Enabled | Flags::Sticky).as_u32());
 }
@@ -89,7 +89,7 @@ fn fields_preserved() {
     let total_size = header.total_size();
 
     header.set_flags(Flags::Enabled | Flags::Sticky);
-    let serialized = header.serialize();
+    let (serialized, _len) = header.serialize();
 
     let _version = u16::from_le_bytes(serialized[0..2].try_into().unwrap());
     let _header_size = u16::from_le_bytes(serialized[2..4].try_into().unwrap());
@@ -114,8 +114,8 @@ fn serialization_multiple_checks() {
 
     // Disable
     header.set_enabled(false);
-    let serialized = header.serialize();
-    buffer[0..16].copy_from_slice(&serialized);
+    let (serialized, _len) = header.serialize();
+    buffer[0..16].copy_from_slice(&serialized[..16]);
 
     let header = parse_tbf_header(&buffer[0..header_len as usize], 2).unwrap();
     assert!(!header.enabled());
@@ -124,8 +124,8 @@ fn serialization_multiple_checks() {
     let mut header = header;
     header.set_enabled(true);
     header.set_sticky(true);
-    let serialized = header.serialize();
-    buffer[0..16].copy_from_slice(&serialized);
+    let (serialized, _len) = header.serialize();
+    buffer[0..16].copy_from_slice(&serialized[..16]);
 
     let header = parse_tbf_header(&buffer[0..header_len as usize], 2).unwrap();
     assert!(header.enabled());
@@ -135,8 +135,8 @@ fn serialization_multiple_checks() {
     let flags = !Flags::Sticky;
     let mut header = header;
     header.set_flags(flags);
-    let serialized = header.serialize();
-    buffer[0..16].copy_from_slice(&serialized);
+    let (serialized, _len) = header.serialize();
+    buffer[0..16].copy_from_slice(&serialized[..16]);
 
     let header = parse_tbf_header(&buffer[0..header_len as usize], 2).unwrap();
     assert!(header.enabled());

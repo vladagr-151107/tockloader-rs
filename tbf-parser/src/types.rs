@@ -18,6 +18,10 @@ use bitflags::bitflags;
 /// and modify. This simplification enables us to use fixed sized buffers.
 const NUM_STORAGE_PERMISSIONS: usize = 8;
 
+/// Maximum size in bytes of a serialized TBF header
+/// `serialize()` writes into a fixed-size buffer
+pub const MAX_HEADER_SIZE: usize = 512;
+
 /// Error when parsing just the beginning of the TBF header. This is only used
 /// when establishing the linked list structure of apps installed in flash.
 pub enum InitialTbfParseError {
@@ -938,6 +942,14 @@ pub fn serialize_fixed_addresses(
     write_tlv(out, offset, 5, &value)
 }
 
+pub fn serialize_package_name<const L: usize>(
+    name: &TbfHeaderV2PackageName<L>,
+    out: &mut [u8],
+    offset: usize,
+) -> usize {
+    write_tlv(out, offset, 3, &name.buffer[0..name.size as usize])
+}
+
 pub fn serialize_kernel_version(
     kernel_version: &TbfHeaderV2KernelVersion,
     out: &mut [u8],
@@ -949,17 +961,9 @@ pub fn serialize_kernel_version(
     write_tlv(out, offset, 8, &value)
 }
 
-pub fn serialize_package_name<const L: usize>(
-    name: &TbfHeaderV2PackageName<L>,
-    out: &mut [u8],
-    offset: usize,
-) -> usize {
-    write_tlv(out, offset, 3, &name.buffer[0..name.size as usize])
-}
-
-pub fn serialize_short_id(short_id: &TbfHeaderV2ShortId, out: &mut [u8], offset: usize) {
+pub fn serialize_short_id(short_id: &TbfHeaderV2ShortId, out: &mut [u8], offset: usize) -> usize {
     let value = short_id.short_id.map_or(0u32, |id| id.get());
-    write_tlv(out, offset, 10, &value.to_le_bytes());
+    write_tlv(out, offset, 10, &value.to_le_bytes())
 }
 
 pub fn serialize_writeable_regions(
@@ -1483,17 +1487,52 @@ impl TbfHeader {
     /// Note: this only serializes `TbfHeaderV2Base`/`Padding` fields
     ///
     /// DELTA: originally did not exist
-    pub fn serialize(&self) -> [u8; 16] {
+    pub fn serialize(&self) -> ([u8; MAX_HEADER_SIZE], usize) {
+        let mut out = [0u8; MAX_HEADER_SIZE];
         let base = match self {
             TbfHeader::TbfHeaderV2(hd) => &hd.base,
             TbfHeader::Padding(base) => base,
         };
-        let mut bytes = [0u8; 16];
-        bytes[0..2].copy_from_slice(&base.version.to_le_bytes());
-        bytes[2..4].copy_from_slice(&base.header_size.to_le_bytes());
-        bytes[4..8].copy_from_slice(&base.total_size.to_le_bytes());
-        bytes[8..12].copy_from_slice(&base.flags.to_le_bytes());
-        bytes[12..16].copy_from_slice(&base.checksum.to_le_bytes());
-        bytes
+        let mut offset = 16;
+
+        if let TbfHeader::TbfHeaderV2(hd) = self {
+            if let Some(main) = &hd.main {
+                offset = serialize_main(main, &mut out, offset);
+            }
+            if let Some(program) = &hd.program {
+                offset = serialize_program(program, &mut out, offset);
+            }
+            if let Some(fixed_addresses) = &hd.fixed_addresses {
+                offset = serialize_fixed_addresses(fixed_addresses, &mut out, offset);
+            }
+            if let Some(package_name) = &hd.package_name {
+                offset = serialize_package_name(package_name, &mut out, offset);
+            }
+            if let Some(kernel_version) = &hd.kernel_version {
+                offset = serialize_kernel_version(kernel_version, &mut out, offset);
+            }
+            if let Some(short_id) = &hd.short_id {
+                offset = serialize_short_id(short_id, &mut out, offset);
+            }
+            if let Some(writeable_regions) = &hd.writeable_regions {
+                if writeable_regions.iter().any(|r| r.is_some()) {
+                    offset = serialize_writeable_regions(writeable_regions, &mut out, offset);
+                }
+            }
+            if let Some(storage_permissions) = &hd.storage_permissions {
+                offset = serialize_storage_permissions(storage_permissions, &mut out, offset);
+            }
+            if let Some(permissions) = &hd.permissions {
+                offset = serialize_permissions(permissions, &mut out, offset);
+            }
+        }
+
+        out[0..2].copy_from_slice(&base.version.to_le_bytes());
+        out[2..4].copy_from_slice(&(offset as u16).to_le_bytes());
+        out[4..8].copy_from_slice(&base.total_size.to_le_bytes());
+        out[8..12].copy_from_slice(&base.flags.to_le_bytes());
+        out[12..16].copy_from_slice(&base.checksum.to_le_bytes());
+
+        (out, offset)
     }
 }
