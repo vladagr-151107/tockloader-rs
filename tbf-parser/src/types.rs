@@ -20,6 +20,9 @@ const NUM_STORAGE_PERMISSIONS: usize = 8;
 
 /// Maximum size in bytes of a serialized TBF header
 /// `serialize()` writes into a fixed-size buffer
+/// This value is a generous upper bound covering the base header (16 bytes)
+/// plus every possible TLV block at its maximum size — not
+/// a value derived from the TBF format itself.
 pub const MAX_HEADER_SIZE: usize = 512;
 
 /// Error when parsing just the beginning of the TBF header. This is only used
@@ -913,6 +916,8 @@ pub fn write_tlv(out: &mut [u8], offset: usize, tipe: u16, value: &[u8]) -> usiz
     pos + pad
 }
 
+/// Serialize the Main TLV block (type 1) into `out` and `offset`. Returns
+/// the offset just past the written entry.
 pub fn serialize_main(main: &TbfHeaderV2Main, out: &mut [u8], offset: usize) -> usize {
     let mut value = [0u8; 12];
     value[0..4].copy_from_slice(&main.init_fn_offset.to_le_bytes());
@@ -921,6 +926,8 @@ pub fn serialize_main(main: &TbfHeaderV2Main, out: &mut [u8], offset: usize) -> 
     write_tlv(out, offset, 1, &value)
 }
 
+/// Serialize the Program TLV block (type 9) into `out` and `offset`.
+/// Returns the offset just past the written entry.
 pub fn serialize_program(program: &TbfHeaderV2Program, out: &mut [u8], offset: usize) -> usize {
     let mut value = [0u8; 20];
     value[0..4].copy_from_slice(&program.init_fn_offset.to_le_bytes());
@@ -931,6 +938,8 @@ pub fn serialize_program(program: &TbfHeaderV2Program, out: &mut [u8], offset: u
     write_tlv(out, offset, 9, &value)
 }
 
+/// Serialize the FixedAddresses TLV block (type 5) into `out`
+/// and `offset`. Returns the offset just past the written entry.
 pub fn serialize_fixed_addresses(
     fixed_addresses: &TbfHeaderV2FixedAddresses,
     out: &mut [u8],
@@ -942,6 +951,10 @@ pub fn serialize_fixed_addresses(
     write_tlv(out, offset, 5, &value)
 }
 
+/// Serialize the PackageName TLV block (type 3) into `out` and `offset`.
+/// Only first `size` bytes of name buffer are written, matching the
+/// actual name length rather than the full backing array. Returns
+/// the offset just past the written entry.
 pub fn serialize_package_name<const L: usize>(
     name: &TbfHeaderV2PackageName<L>,
     out: &mut [u8],
@@ -950,6 +963,8 @@ pub fn serialize_package_name<const L: usize>(
     write_tlv(out, offset, 3, &name.buffer[0..name.size as usize])
 }
 
+/// Serialize KernelVersion TLV block (type 8) intto `out` and `offset`.
+/// Returns the offset just past the written entry.
 pub fn serialize_kernel_version(
     kernel_version: &TbfHeaderV2KernelVersion,
     out: &mut [u8],
@@ -961,11 +976,16 @@ pub fn serialize_kernel_version(
     write_tlv(out, offset, 8, &value)
 }
 
+/// Serialize ShortId TLV block (type 10) into `out` and `offset`. `None` is
+/// encoded as 0, matching the TBF format. Returns the offset just past the written entry.
 pub fn serialize_short_id(short_id: &TbfHeaderV2ShortId, out: &mut [u8], offset: usize) -> usize {
     let value = short_id.short_id.map_or(0u32, |id| id.get());
     write_tlv(out, offset, 10, &value.to_le_bytes())
 }
 
+/// Serialize WriteableRegions TLV block (type 2) into `out` and `offset`. Only the
+/// `Some` entries in `regions` are written, in slot order; empty slots are skipped
+/// rather than padded. Returns the offset just past the written entry.
 pub fn serialize_writeable_regions(
     regions: &[Option<TbfHeaderV2WriteableFlashRegion>; 4],
     out: &mut [u8],
@@ -983,6 +1003,9 @@ pub fn serialize_writeable_regions(
     write_tlv(out, offset, 2, &value[..len])
 }
 
+/// Serialize the StoragePermissions TLV block (type 7) into `out` and `offset`. Writes
+/// write_id (0 if None), then read_length and read_ids list, then modify_length and the
+/// modify_ids list. Returns the offset just past the written entry.
 pub fn serialize_storage_permissions<const L: usize>(
     perms: &TbfHeaderV2StoragePermissions<L>,
     out: &mut [u8],
@@ -1012,6 +1035,9 @@ pub fn serialize_storage_permissions<const L: usize>(
     write_tlv(out, offset, 7, &value[..pos])
 }
 
+/// Serialize the Permissions TLV block (type 6) into `out` and `offset`. Writes `length`
+/// followed by that many 16-byte permission entries (drive_number, offset, allowed_commands).
+/// Returns the offset just past the written entry.
 pub fn serialize_permissions<const L: usize>(
     perms: &TbfHeaderV2Permissions<L>,
     out: &mut [u8],
@@ -1482,11 +1508,20 @@ impl TbfHeader {
         }
     }
 
-    /// Serialize the 16-byte base header back into bytes.
+    /// Serialize the full header (base plus every present TLV block) into a
+    /// fixed-size buffer. Walks each `Option` field on `TbfHeaderV2` in the
+    /// same order they appear in the struct and writes the corresponding
+    /// TLV via the `serialize_*` helpers above; fields that are `None` are
+    /// skipped entirely. Note: the relative order of WriteableFlashRegions,
+    /// FixedAddresses, Permissions, StoragePermissions and ShortId is not
+    /// verified against real TBF data — none of the test fixtures contain
+    /// more than one of these blocks together — so this order is an
+    /// assumption, not a confirmed fact.
     ///
-    /// Note: this only serializes `TbfHeaderV2Base`/`Padding` fields
+    /// Returns the buffer along with the number of bytes actually written;
+    /// bytes beyond that length are unused padding.
     ///
-    /// DELTA: originally did not exist
+    /// DELTA: originally returned `[u8; 16]` (base header only)
     pub fn serialize(&self) -> ([u8; MAX_HEADER_SIZE], usize) {
         let mut out = [0u8; MAX_HEADER_SIZE];
         let base = match self {
