@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 
 use crate::attributes::app_attributes::AppAttributes;
-use crate::command_impl::reshuffle_apps::{
-    create_pkt, find_conflicting_app, reshuffle_apps, TockApp,
-};
+use crate::command_impl::reshuffle_apps::{create_pkt, reshuffle_apps, TockApp};
 use crate::connection::{Connection, TockloaderConnection};
 use crate::errors::{InternalError, TockloaderError};
 use crate::tabs::tab::Tab;
@@ -22,12 +20,12 @@ impl CommandInstall for TockloaderConnection {
     ) -> Result<(), TockloaderError> {
         let settings = self.get_settings();
         let app_attributes_list: Vec<AppAttributes> = self.list().await?;
-        //create the list of names of the apps on the board
+        // Create the list of names of the apps on the board
         let names: Vec<Option<&str>> = app_attributes_list
             .iter()
             .map(|a| a.tbf_header.get_package_name())
             .collect();
-        let conflict_idx = find_conflicting_app(&names, tab.name());
+        let conflict_idx = names.iter().position(|n| *n == Some(tab.name()));
         let mut tock_app_list: Vec<TockApp> = app_attributes_list
             .iter()
             .enumerate()
@@ -67,13 +65,5 @@ impl CommandInstall for TockloaderConnection {
         // write the pkt
         let _ = self.write(settings.app_start_address, &pkt).await;
         Ok(())
-    }
-
-    async fn find_conflicting_app(&mut self, tab: &Tab) -> Result<Option<String>, TockloaderError> {
-        let app_attributes_list = self.list().await?;
-        Ok(app_attributes_list
-            .iter()
-            .find(|a| a.tbf_header.get_package_name() == Some(tab.name()))
-            .map(|_| tab.name().to_string()))
     }
 }

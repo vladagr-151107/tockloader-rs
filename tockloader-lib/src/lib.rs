@@ -53,7 +53,6 @@ pub trait CommandInstall {
         tab_file: Tab,
         resolution: InstallResolution,
     ) -> Result<(), TockloaderError>;
-    async fn find_conflicting_app(&mut self, tab: &Tab) -> Result<Option<String>, TockloaderError>;
 }
 
 #[async_trait]
