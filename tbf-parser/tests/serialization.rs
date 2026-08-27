@@ -280,3 +280,48 @@ fn permissions_tlv_round_trips() {
     assert_eq!(&out[4..22.min(out.len())], &bytes[..]);
     assert_eq!(&out[22..24], &[0, 0]);
 }
+
+#[test]
+fn full_header_matches_fixture() {
+    let buffer = include_bytes!("./flashes/simple.dat");
+
+    let (_, header_len, _) = parse_tbf_header_lengths(&buffer[0..8].try_into().unwrap())
+        .ok()
+        .unwrap();
+    let header = parse_tbf_header(&buffer[0..header_len as usize], 2).unwrap();
+
+    let (serialized, len) = header.serialize();
+
+    assert_eq!(len, header_len as usize);
+    assert_eq!(&serialized[0..len], &buffer[0..header_len as usize]);
+}
+
+#[test]
+fn full_header_matches_footer_sha256_fixture() {
+    let buffer = include_bytes!("./flashes/footerSHA256.dat");
+
+    let (_, header_len, _) = parse_tbf_header_lengths(&buffer[0..8].try_into().unwrap())
+        .ok()
+        .unwrap();
+    let header = parse_tbf_header(&buffer[0..header_len as usize], 2).unwrap();
+
+    let (serialized, len) = header.serialize();
+
+    assert_eq!(len, header_len as usize);
+    assert_eq!(&serialized[0..len], &buffer[0..header_len as usize]);
+}
+
+#[test]
+fn full_header_matches_footer_rsa4096_fixture() {
+    let buffer = include_bytes!("./flashes/footerRSA4096.dat");
+
+    let (_, header_len, _) = parse_tbf_header_lengths(&buffer[0..8].try_into().unwrap())
+        .ok()
+        .unwrap();
+    let header = parse_tbf_header(&buffer[0..header_len as usize], 2).unwrap();
+
+    let (serialized, len) = header.serialize();
+
+    assert_eq!(len, header_len as usize);
+    assert_eq!(&serialized[0..len], &buffer[0..header_len as usize]);
+}
