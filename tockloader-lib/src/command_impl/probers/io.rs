@@ -43,6 +43,15 @@ impl IO for ProbeRSConnection {
             return Err(InternalError::ConnectionNotOpen.into());
         }
         let page_size = self.settings.page_size as usize;
+
+        // If `address` isn't page-aligned, the flash hardware will still erase some page
+        if address % page_size as u64 != 0 {
+            return Err(InternalError::MisconfiguredBoardSettings(format!(
+                "erase_page address {address:#x} is not aligned to the page size ({page_size} bytes)"
+            ))
+            .into());
+        }
+
         let session = self.session.as_mut().expect("Board must be open");
         let mut loader = session.target().flash_loader();
         loader.add_data(address, &vec![0xFFu8; page_size])?;

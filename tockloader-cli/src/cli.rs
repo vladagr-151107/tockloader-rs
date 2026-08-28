@@ -57,6 +57,10 @@ fn get_subcommands() -> Vec<Command> {
             .about("Erase apps")
             .args(get_app_args())
             .args(get_channel_args())
+            .arg(
+                arg!(--full "Fully wipe the erased apps' flash region instead of just invalidating their headers")
+                    .action(clap::ArgAction::SetTrue),
+            )
             .arg_required_else_help(false),
     ]
 }

@@ -244,7 +244,10 @@ async fn main() -> Result<()> {
             cli::validate(&mut cmd, sub_matches);
             let mut conn = open_connection(sub_matches).await?;
 
-            conn.erase_apps().await.context("Failed to erase apps.")?;
+            let full = sub_matches.get_flag("full");
+            conn.erase_apps(!full)
+                .await
+                .context("Failed to erase apps.")?;
         }
         _ => {
             println!("Could not run the provided subcommand.");

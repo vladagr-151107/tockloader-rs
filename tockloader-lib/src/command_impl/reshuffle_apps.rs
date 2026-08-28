@@ -389,12 +389,11 @@ pub fn reshuffle_apps(
 
                     if needed_padding > 0 {
                         // insert a padding
-                        total_padding += needed_padding as usize;
                         reordered_apps.push(Index {
                             installed: false,
                             idx: None,
                             ram_address: None,
-                            address: settings.app_start_address + insert_size,
+                            address: gap_start,
                             size: needed_padding,
                         });
                         reordered_apps.push(c_app.as_index(None, gap_start + needed_padding));
@@ -444,6 +443,21 @@ pub fn reshuffle_apps(
             break;
         }
     }
+
+    if let Some(last) = saved_configuration.last() {
+        let end = last.address + last.size;
+        if !end.is_multiple_of(settings.page_size) {
+            let needed_padding = settings.page_size - end % settings.page_size;
+            saved_configuration.push(Index {
+                installed: false,
+                idx: None,
+                ram_address: None,
+                address: end,
+                size: needed_padding,
+            });
+        }
+    }
+
     log::info!("obtained config {:#x?}", saved_configuration);
     // panic!();
     Some(saved_configuration)

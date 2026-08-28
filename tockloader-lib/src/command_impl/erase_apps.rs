@@ -8,16 +8,24 @@ use crate::{CommandEraseApps, CommandList, IO};
 
 #[async_trait]
 impl CommandEraseApps for TockloaderConnection {
-    async fn erase_apps(&mut self) -> Result<(), TockloaderError> {
+    async fn erase_apps(&mut self, shallow: bool) -> Result<(), TockloaderError> {
         let settings = self.get_settings();
 
         let app_attributes_list: Vec<AppAttributes> = self.list().await?;
 
-        // if there are no apps on board, invalidate the first header
+        // no apps on the board, nothing for us to do
         if app_attributes_list.is_empty() {
-            self.erase_page(settings.app_start_address).await?;
             return Ok(());
         }
+
+        // for the full-erase path to know how much flash to zero
+        let total_apps_region_len: u64 = app_attributes_list
+            .iter()
+            .map(|app| {
+                (app.address - settings.app_start_address) + app.tbf_header.total_size() as u64
+            })
+            .max()
+            .unwrap_or(0);
 
         // split into apps we're keeping and erasing
         let (kept_attrs, removed_attrs): (Vec<&AppAttributes>, Vec<&AppAttributes>) =
@@ -29,9 +37,16 @@ impl CommandEraseApps for TockloaderConnection {
             log::info!("Erasing app at {:#x}.", app.address);
         }
 
-        // shallow erase of non-sticky apps
+        // no sticky apps to keep
         if kept_attrs.is_empty() {
-            self.erase_page(settings.app_start_address).await?;
+            if shallow {
+                // shallow: only invalidate the first header, like upstream tockloader
+                self.erase_page(settings.app_start_address).await?;
+            } else {
+                // full: physically zero out the entire region every app used to occupy
+                let zero_buf = vec![0u8; total_apps_region_len as usize];
+                self.write(settings.app_start_address, &zero_buf).await?;
+            }
             log::info!("All apps have been erased.");
             return Ok(());
         }
@@ -60,9 +75,17 @@ impl CommandEraseApps for TockloaderConnection {
         // write reshuffled remaining apps back
         self.write(settings.app_start_address, &pkt).await?;
 
-        // erase the page after them
-        let tail_addr = settings.app_start_address + pkt.len() as u64;
-        self.erase_page(tail_addr).await?;
+        if shallow {
+            // shallow: erase just the page right after them
+            let tail_addr = settings.app_start_address + pkt.len() as u64;
+            self.erase_page(tail_addr).await?;
+        } else if (pkt.len() as u64) < total_apps_region_len {
+            // full: zero out everything from the new end of the list to where the apps used to end
+            let tail_addr = settings.app_start_address + pkt.len() as u64;
+            let tail_len = total_apps_region_len - pkt.len() as u64;
+            let zero_tail = vec![0u8; tail_len as usize];
+            self.write(tail_addr, &zero_tail).await?;
+        }
 
         log::info!("After erasing apps, remaining apps on board:");
         for app in &kept_attrs {

@@ -52,7 +52,7 @@ pub trait CommandInstall {
 
 #[async_trait]
 pub trait CommandEraseApps {
-    async fn erase_apps(&mut self) -> Result<(), TockloaderError>;
+    async fn erase_apps(&mut self, shallow: bool) -> Result<(), TockloaderError>;
 }
 
 #[async_trait]

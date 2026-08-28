@@ -61,6 +61,15 @@ impl IO for SerialConnection {
     }
 
     async fn erase_page(&mut self, address: u64) -> Result<(), TockloaderError> {
+        let page_size = self.get_settings().page_size as u64;
+
+        if address % page_size != 0 {
+            return Err(InternalError::MisconfiguredBoardSettings(format!(
+                "erase_page address {address:#x} is not aligned to the page size ({page_size} bytes)"
+            ))
+            .into());
+        }
+
         let stream = self.stream.as_mut().expect("Board must be open.");
 
         let pkt = (address as u32).to_le_bytes().to_vec();
