@@ -45,7 +45,7 @@ impl IO for ProbeRSConnection {
         let page_size = self.settings.page_size as usize;
 
         // If `address` isn't page-aligned, the flash hardware will still erase some page
-        if address % page_size as u64 != 0 {
+        if !address.is_multiple_of(page_size as u64) {
             return Err(InternalError::MisconfiguredBoardSettings(format!(
                 "erase_page address {address:#x} is not aligned to the page size ({page_size} bytes)"
             ))

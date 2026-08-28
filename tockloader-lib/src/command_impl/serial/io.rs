@@ -61,9 +61,9 @@ impl IO for SerialConnection {
     }
 
     async fn erase_page(&mut self, address: u64) -> Result<(), TockloaderError> {
-        let page_size = self.get_settings().page_size as u64;
+        let page_size = self.get_settings().page_size;
 
-        if address % page_size != 0 {
+        if !address.is_multiple_of(page_size) {
             return Err(InternalError::MisconfiguredBoardSettings(format!(
                 "erase_page address {address:#x} is not aligned to the page size ({page_size} bytes)"
             ))
