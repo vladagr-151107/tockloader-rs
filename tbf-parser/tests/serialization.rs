@@ -325,3 +325,20 @@ fn full_header_matches_footer_rsa4096_fixture() {
     assert_eq!(len, header_len as usize);
     assert_eq!(&serialized[0..len], &buffer[0..header_len as usize]);
 }
+
+#[test]
+fn checksum() {
+    let buffer = include_bytes!("./flashes/simple.dat");
+    let (_, header_len, _) = parse_tbf_header_lengths(&buffer[0..8].try_into().unwrap())
+        .ok()
+        .unwrap();
+    let mut header = parse_tbf_header(&buffer[0..header_len as usize], 2).unwrap();
+
+    header.set_sticky(true);
+
+    let (serialized, len) = header.serialize();
+
+    // if checksum is correct, repeatable parsing should not fail on ChecksumMismatch
+    let reparsed = parse_tbf_header(&serialized[..len], 2).unwrap();
+    assert!(reparsed.sticky());
+}

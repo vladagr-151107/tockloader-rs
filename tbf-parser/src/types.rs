@@ -916,6 +916,19 @@ pub fn write_tlv(out: &mut [u8], offset: usize, tipe: u16, value: &[u8]) -> usiz
     pos + pad
 }
 
+/// Compute the TBF checksum for a fully serialized header: the XOR of
+/// every 4-byte world in `header`, skipping the checksum field itself
+fn compute_checksum(header: &[u8]) -> u32 {
+    let mut checksum: u32 = 0;
+    for (i, chunk) in header.chunks_exact(4).enumerate() {
+        if i == 3 {
+            continue; // skip the checksum field
+        }
+        checksum ^= u32::from_le_bytes(chunk.try_into().unwrap());
+    }
+    checksum
+}
+
 /// Serialize the Main TLV block (type 1) into `out` and `offset`. Returns
 /// the offset just past the written entry.
 pub fn serialize_main(main: &TbfHeaderV2Main, out: &mut [u8], offset: usize) -> usize {
@@ -1566,7 +1579,10 @@ impl TbfHeader {
         out[2..4].copy_from_slice(&(offset as u16).to_le_bytes());
         out[4..8].copy_from_slice(&base.total_size.to_le_bytes());
         out[8..12].copy_from_slice(&base.flags.to_le_bytes());
-        out[12..16].copy_from_slice(&base.checksum.to_le_bytes());
+        out[12..16].copy_from_slice(&0u32.to_le_bytes());
+
+        let checksum = compute_checksum(&out[..offset]);
+        out[12..16].copy_from_slice(&checksum.to_le_bytes());
 
         (out, offset)
     }
