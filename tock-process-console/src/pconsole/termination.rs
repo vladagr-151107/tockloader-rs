@@ -6,7 +6,7 @@ use tokio::sync::broadcast;
 
 #[derive(Debug, Clone)]
 pub enum Interrupted {
-    _OsSignal,
+    OsSignal,
     UserRequest,
 }
 

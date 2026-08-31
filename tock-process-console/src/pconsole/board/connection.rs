@@ -24,7 +24,7 @@ impl ConnectionHandler {
     pub async fn connection_init(
         tty: &str,
     ) -> Result<(UnboundedReceiver<Event>, UnboundedSender<Bytes>), Error> {
-        let port: SerialStream = tokio_serial::new(tty, 115200).open_native_async()?;
+        let mut port: SerialStream = tokio_serial::new(tty, 115200).open_native_async()?;
 
         #[cfg(unix)]
         port.set_exclusive(false)?;
