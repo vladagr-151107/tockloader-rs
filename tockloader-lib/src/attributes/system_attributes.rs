@@ -95,17 +95,29 @@ impl SystemAttributes {
             // TODO(K-Nicolas-10): Chain: CLI arguments -> hardcoded start_address -> calculate from kernel app start address
             result.appaddr = Some(app_start_address);
         } else {
-            let mut attribute_chunks = buf.chunks_exact(DecodedAttribute::ENCODED_LEN);
+            let mut attribute_chunks = buf
+                .as_chunks::<{ DecodedAttribute::ENCODED_LEN }>()
+                .0
+                .iter();
             // We always read 16 * 64 bytes so we won't panic
-            if let Some(board) = attribute_chunks.next().and_then(DecodedAttribute::decode) {
+            if let Some(board) = attribute_chunks
+                .next()
+                .and_then(|c| DecodedAttribute::decode(c))
+            {
                 result.board = Some(board.value);
             }
 
-            if let Some(arch) = attribute_chunks.next().and_then(DecodedAttribute::decode) {
+            if let Some(arch) = attribute_chunks
+                .next()
+                .and_then(|c| DecodedAttribute::decode(c))
+            {
                 result.arch = Some(arch.value);
             }
 
-            if let Some(appaddr) = attribute_chunks.next().and_then(DecodedAttribute::decode) {
+            if let Some(appaddr) = attribute_chunks
+                .next()
+                .and_then(|c| DecodedAttribute::decode(c))
+            {
                 result.appaddr = Some(
                     u64::from_str_radix(appaddr.value.trim_start_matches("0x"), 16).map_err(
                         |e| TockError::AttributeParsing(AttributeParseError::InvalidNumber(e)),
@@ -113,7 +125,10 @@ impl SystemAttributes {
                 );
             }
 
-            if let Some(boothash) = attribute_chunks.next().and_then(DecodedAttribute::decode) {
+            if let Some(boothash) = attribute_chunks
+                .next()
+                .and_then(|c| DecodedAttribute::decode(c))
+            {
                 result.boothash = Some(boothash.value);
             }
 

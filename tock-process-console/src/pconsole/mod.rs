@@ -24,7 +24,7 @@ pub async fn run() -> anyhow::Result<()> {
     if let Ok(reason) = interrupt_reader.recv().await {
         match reason {
             Interrupted::UserRequest => println!("Exited per user request"),
-            Interrupted::OsSignal => println!("Exited because of os signal"),
+            Interrupted::_OsSignal => println!("Exited because of os signal"),
         }
     } else {
         println!("Exited due to an unexpected error");
